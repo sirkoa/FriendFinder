@@ -1,22 +1,4 @@
-var mysql = require('mysql');
-
-// Create connection (CHANGE TO YOUR CREDENTIALS)
-var connection = mysql.createConnection({
-  host: 'localhost',
-  user: 'root',
-  password: '',
-  database: 'friend_finder',
-  port: 3306
-});
-
-// Initiate MySQL Connection.
-connection.connect(function(err) {
-  if (err) {
-    console.error('error connecting: ' + err.stack);
-    return;
-  }
-  console.log('connected as id ' + connection.threadId);
-});
+var friendlist = require("../data/friends.js")
 
 // ===============================================================================
 // ROUTING
@@ -29,47 +11,14 @@ module.exports = function(app) {
   // (ex: localhost:PORT/api/admin... they are shown a JSON of the data in the table)
   // ---------------------------------------------------------------------------
 
-  app.get('/api/tables', function(req, res) {
-    connection.query('SELECT * FROM reservations', function(err, reservation) {
-      if (err) throw err;
 
-      res.json(reservation);
-    });
+
+  app.get('/api/friendlist', function(req, res) {
+
+      res.json(friendlist);
   });
 
-  app.get('/api/waitlist', function(req, res) {
-    connection.query('SELECT * FROM waitinglist', function(err, waitlist) {
-      if (err) throw err;
 
-      res.json(waitlist);
-    });
-  });
-
-// Creates Delete Route that passes in data from frontend (table & id specifically)
-  app.delete('/api/delete/:table/:id', function(req, res) {
-
-    // Grab table
-    var queryTable = req.params.table;
-    // Grab id of row to delete in table
-    var reservationId = parseInt(req.params.id);
-
-    // Delete from (queryTable) where (id = reservationId)
-    connection.query('DELETE FROM ?? WHERE ?', 
-    [
-      // Pass in query table (in ??)
-      queryTable,
-      {
-        // Pass in id
-        id: reservationId
-      }
-    ], function(err) {
-      if (err) throw err;
-
-      console.log("It worked!");
-      // Send back true to let them know it worked
-      res.json(true);
-    });
-  });
 
   // API POST Requests
   // Below code handles when a user submits a form and thus submits data to the server.
@@ -85,41 +34,39 @@ module.exports = function(app) {
     // req.body is available since we're using the body-parser middleware
     var newfriend = req.body;
 
+    var friendmatch = [];
     
+    
+    for (var i = 0; i < friendlist.length; i++) {
+      var scoredifference = 0
+      for(var k = 0; < friendlist.scores[i]; k++) {
+        var diffence = Math.abs(friendlist[i].scores[k] - newSurvey.scores[k]);
+        scoredifference += diffence;
 
-    // Query current reservations
-    connection.query('SELECT * FROM reservations', function(err, reservation) {
-      if (err) throw err;
-      
-      // if there are less than 5 current reservations, add into reservations
-      if (reservation.length < 5) {
-        connection.query("INSERT INTO reservations SET ?", reservationData, function(error) {
-          if (error) throw error;
-          console.log("Reservation made!");
-
-          res.json(true);
-        });
       }
-      // if there are 5+ reservations, add new reservation to waiting list 
-      else {
-        connection.query("INSERT INTO waitinglist SET ?", reservationData, function(error) {
-          if (error) throw error;
-          console.log("No more reservations, you've been added to the waiting list!");
-          res.redirect(false);
-        });
-      }
+    newfriend.push({
+      name: friendlist[i].name,
+      picture: friendlist[i].picture,
+      totalDiff : scoredifference,
     });
+      
+    }
+    var maxScore = 50;
+
+    for(var i = 0; i < newfriend.length; i++){
+      if (newfriend[i].totalDiff < maxScore) {
+        maxScore = newfriend[i].totalDiff;
+      }
+    }
+    var pickedFriend = {};
+    for (var i = 0; i < newfriend.length; i++){
+      pickedFriend = newfriend[i];
+    }
+    console.log(pickedFriend)
+    res.json(pickedFriend);
   });
 
-  // ---------------------------------------------------------------------------
-  // I added this below code so you could clear out the table while working with the functionality.
-  // Don"t worry about it!
+ 
 
-  app.post('/api/clear', function() {
-    // Empty out the arrays of data
-    tableData = [];
-    waitListData = [];
-
-    console.log(tableData);
-  });
+  
 };
